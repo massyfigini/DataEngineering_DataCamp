@@ -196,3 +196,110 @@ csvcut -c "track_id","popularity" Spotify201809.csv > Spotify201809_subset.csv
 
 # While stacking the 2 files, create a data source column
 csvstack -g "Sep2018","Oct2018" Spotify201809_subset.csv Spotify201810_subset.csv > Spotify_all_rankings.csv
+
+
+
+###########################################
+# Database Operations on the Command Line #
+###########################################
+
+### Practice pulling data from database
+
+# Verify database name 
+ls
+
+# Pull the entire Spotify_Popularity table and print in log
+sql2csv --db "sqlite:///SpotifyDatabase.db" \
+        --query "SELECT * FROM Spotify_Popularity" 
+
+# Verify database name 
+ls
+
+# Query first 5 rows of Spotify_Popularity and print in log
+sql2csv --db "sqlite:///SpotifyDatabase.db" \
+        --query "SELECT * FROM Spotify_Popularity LIMIT 5" \
+        | csvlook     
+
+# Verify database name 
+ls
+
+# Save query to new file Spotify_Popularity_5Rows.csv
+sql2csv --db "sqlite:///SpotifyDatabase.db" \
+        --query "SELECT * FROM Spotify_Popularity LIMIT 5" \
+        > Spotify_Popularity_5Rows.csv
+
+# Verify newly created file
+ls
+
+# Print preview of newly created file
+csvlook Spotify_Popularity_5Rows.csv
+
+
+### Applying SQL to a local CSV file
+
+# Preview CSV file
+ls
+
+# Apply SQL query to Spotify_MusicAttributes.csv
+csvsql --query "SELECT * FROM Spotify_MusicAttributes ORDER BY duration_ms LIMIT 1" Spotify_MusicAttributes.csv
+
+# Reformat the output using csvlook 
+csvsql --query "SELECT * FROM Spotify_MusicAttributes ORDER BY duration_ms LIMIT 1" \
+	Spotify_MusicAttributes.csv | csvlook
+
+# Re-direct output to new file: LongestSong.csv
+csvsql --query "SELECT * FROM Spotify_MusicAttributes ORDER BY duration_ms LIMIT 1" \
+	Spotify_MusicAttributes.csv > LongestSong.csv
+    
+# Preview newly created file 
+csvlook LongestSong.csv
+
+
+### Cleaner scripting via shell variables
+
+# Preview CSV file
+ls
+
+# Store SQL query as shell variable
+sqlquery="SELECT * FROM Spotify_MusicAttributes ORDER BY duration_ms LIMIT 1"
+
+# Apply SQL query to Spotify_MusicAttributes.csv
+csvsql --query "$sqlquery" Spotify_MusicAttributes.csv
+
+
+### Joining local CSV files using SQL
+
+# Store SQL query as shell variable
+sql_query="SELECT ma.*, p.popularity FROM Spotify_MusicAttributes ma INNER JOIN Spotify_Popularity p ON ma.track_id = p.track_id"
+
+# Join 2 local csvs into a new csv using the saved SQL
+csvsql --query "$sql_query" Spotify_MusicAttributes.csv Spotify_Popularity.csv > Spotify_FullData.csv
+
+# Preview newly created file
+csvstat Spotify_FullData.csv
+
+
+### Pushing data back to database
+
+# Preview file
+ls
+
+# Upload Spotify_MusicAttributes.csv to database
+csvsql --db "sqlite:///SpotifyDatabase.db" --insert Spotify_MusicAttributes.csv
+
+# Store SQL query as shell variable
+sqlquery="SELECT * FROM Spotify_MusicAttributes"
+
+# Apply SQL query to re-pull new table in database
+sql2csv --db "sqlite:///SpotifyDatabase.db" --query "$sqlquery" 
+
+
+### Database and SQL with csvkit
+
+# Store SQL for querying from SQLite database 
+sqlquery_pull="SELECT * FROM SpotifyMostRecentData"
+
+# Apply SQL to save table as local file 
+sql2csv --db "sqlite:///SpotifyDatabase.db" --query "$sqlquery_pull" > SpotifyMostRecentData.csv
+
+
