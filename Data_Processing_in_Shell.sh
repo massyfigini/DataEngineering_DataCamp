@@ -304,3 +304,92 @@ sqlquery_pull="SELECT * FROM SpotifyMostRecentData"
 sql2csv --db "sqlite:///SpotifyDatabase.db" --query "$sqlquery_pull" > SpotifyMostRecentData.csv
 
 
+
+
+#####################################
+# Data Pipeline on the Command Line #
+#####################################
+
+### Executing Python script on the command line
+
+# in one step, create a new file and pass the print function into the file
+echo "print('This is my first Python script')" > my_first_python_script.py
+
+# check file location 
+ls
+
+# check file content 
+cat my_first_python_script.py
+
+# execute Python script file directly from command line  
+python my_first_python_script.py
+
+
+### Installing Python dependencies
+
+# Add scikit-learn to the requirements.txt file
+echo "scikit-learn" > requirements.txt
+
+# Preview file content
+cat requirements.txt
+
+# Install the required dependencies
+pip install -r requirements.txt
+
+# Verify that Scikit-Learn is now installed
+pip list
+
+
+### Running a Python model
+
+# Re-install requirements
+pip install -r requirements.txt
+
+# Preview Python model script for import dependencies
+cat create_model.py
+
+# Verify that dependencies are installed
+pip list
+
+# Execute Python model script, which outputs a pkl file
+python create_model.py
+
+# Verify that the model.pkl file has been created 
+ls
+
+
+### Scheduling a job with crontab
+
+# Verify that there are no CRON jobs currently scheduled
+crontab -l 
+
+# Create Python file hello_world.py
+echo "print('hello world')" > hello_world.py
+
+# Preview Python file 
+cat hello_world.py
+
+# Add as job that runs every minute on the minute to crontab
+echo "* * * * * python hello_world.py" | crontab
+
+# Verify that the CRON job has been added
+crontab -l
+
+
+### Model production on the command line
+
+# Preview both Python script and requirements text file
+cat create_model.py
+cat requirements.txt
+
+# Pip install Python dependencies in requirements file
+pip install -r requirements.txt
+
+# Run Python script on command line
+python create_model.py
+
+# Add CRON job that runs create_model.py every minute
+echo "* * * * * python create_model.py" | crontab
+
+# Verify that the CRON job has been scheduled via CRONTAB
+crontab -l
