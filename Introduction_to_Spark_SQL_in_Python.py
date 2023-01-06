@@ -90,3 +90,115 @@ FROM schedule
 """
 sql_df = spark.sql(query)
 sql_df.show()
+
+
+
+
+#############################################################
+# Using window function sql for natural language processing #
+#############################################################
+
+### Loading a dataframe from a parquet file
+
+# Load the dataframe
+df = spark.read.load('sherlock_sentences.parquet')
+
+# Filter and show the first 5 rows
+df.where('id > 70').show(5, truncate=False)
+
+
+### Split and explode a text column
+
+# Split the clause column into a column called words 
+split_df = clauses_df.select(split('clause', ' ').alias('words')) #alias
+
+split_df.show(5, truncate=False)
+
+# Explode the words column into a column called word 
+exploded_df = split_df.select(explode('words').alias('word')) #explode
+exploded_df.show(10)
+
+# Count the resulting number of rows in exploded_df
+print("\nNumber of rows: ", exploded_df.count())
+
+
+### Creating context window feature data
+
+query = """
+SELECT
+part,
+LAG(word, 2) OVER(PARTITION BY part ORDER BY id) AS w1,
+LAG(word, 1) OVER(PARTITION BY part ORDER BY id) AS w2,
+word AS w3,
+LEAD(word, 1) OVER(PARTITION BY part ORDER BY id) AS w4,
+LEAD(word, 2) OVER(PARTITION BY part ORDER BY id) AS w5
+FROM text
+"""
+spark.sql(query).where("part = 12").show(10)
+
+
+### Repartitioning the data
+
+# Repartition text_df into 12 partitions on 'chapter' column
+repart_df = text_df.repartition(12, 'chapter')
+
+# Prove that repart_df has 12 partitions
+repart_df.rdd.getNumPartitions()
+
+
+### Finding common word sequences
+
+# Find the top 10 sequences of five words
+query = """
+SELECT w1, w2, w3, w4, w5, COUNT(*) AS count FROM (
+   SELECT word AS w1,
+   LEAD(word,1) OVER(PARTITION BY part ORDER BY id ) AS w2,
+   LEAD(word,2) OVER(PARTITION BY part ORDER BY id ) AS w3,
+   LEAD(word,3) OVER(PARTITION BY part ORDER BY id ) AS w4,
+   LEAD(word,4) OVER(PARTITION BY part ORDER BY id ) AS w5
+   FROM text
+)
+GROUP BY w1, w2, w3, w4, w5
+ORDER BY count DESC
+LIMIT 10
+""" 
+df = spark.sql(query)
+df.show()
+
+
+### Unique 5-tuples in sorted order
+
+# Unique 5-tuples sorted in descending order
+query = """
+SELECT DISTINCT w1, w2, w3, w4, w5 FROM (
+   SELECT word AS w1,
+   LEAD(word,1) OVER(PARTITION BY part ORDER BY id ) AS w2,
+   LEAD(word,2) OVER(PARTITION BY part ORDER BY id ) AS w3,
+   LEAD(word,3) OVER(PARTITION BY part ORDER BY id ) AS w4,
+   LEAD(word,4) OVER(PARTITION BY part ORDER BY id ) AS w5
+   FROM text
+)
+ORDER BY w1 DESC, w2 DESC, w3 DESC, w4 DESC, w5 DESC 
+LIMIT 10
+"""
+df = spark.sql(query)
+df.show()
+
+
+### Most frequent 3-tuples per chapter
+
+#   Most frequent 3-tuple per chapter
+query = """
+SELECT chapter, w1, w2, w3, count FROM
+(
+  SELECT
+  chapter,
+  ROW_NUMBER() OVER (PARTITION BY chapter ORDER BY count DESC) AS row,
+  w1, w2, w3, count
+  FROM ( %s )
+)
+WHERE row = 1
+ORDER BY chapter ASC
+""" % subquery
+
+spark.sql(query).show()
