@@ -200,5 +200,4 @@ SELECT chapter, w1, w2, w3, count FROM
 WHERE row = 1
 ORDER BY chapter ASC
 """ % subquery
-
 spark.sql(query).show()
